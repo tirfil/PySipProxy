@@ -8,9 +8,9 @@ rx_register = re.compile("^REGISTER")
 rx_invite = re.compile("^INVITE")
 rx_ack = re.compile("^ACK")
 rx_cancel = re.compile("^CANCEL")
-rx_cancel_cseq = re.compile("CANCEL")
-rx_bye = re.compile("^BYE")
-rx_bye_cseq = re.compile("BYE")
+#rx_cancel_cseq = re.compile("CANCEL")
+#rx_bye = re.compile("^BYE")
+#rx_bye_cseq = re.compile("BYE")
 rx_from = re.compile("^From:")
 rx_to = re.compile("^To:")
 rx_tag = re.compile(";tag")
@@ -20,7 +20,8 @@ rx_addr = re.compile("sip:([^ ;>$]*)")
 rx_addrport = re.compile("([^:]*):(.*)")
 rx_code = re.compile("^SIP/2.0 ([^ ]*)")
 rx_invalid = re.compile("^192\.168")
-rx_cseq = re.compile("^CSeq:")
+rx_invalid2 = re.compile("^10\.")
+#rx_cseq = re.compile("^CSeq:")
 rx_callid = re.compile("Call-ID: (.*)$")
 rx_rr = re.compile("^Record-Route:")
 rx_request_uri = re.compile("^([^ ]*) sip:([^ ]*) SIP/2.0")
@@ -41,27 +42,27 @@ class RecvClient(threading.Thread):
         while received:
             print "---\n>> client received:\n%s\n---" % received
             disconnect = False
-            code = False
-            contact = False
+            code = ""
+            #contact = False
             data = []
             for line in received.split("\r\n"):
                 md = rx_callid.search(line)
                 if md:
                     callid = md.group(1)
-                if rx_code.search(line):
-                    code = True
-                if code and rx_cseq.search(line):
-                    if rx_bye_cseq.search(line) or rx_cancel_cseq.search(line):
-                        disconnect = True            
+                md = rx_code.search(line)
+                if md:
+                    code = md.group(1)
+                    if int(code) == 200:
+                        disconnect = True
+                # if rx_contact.search(line):
+                    # contact = True
                 # remove Record-Route
-                if rx_contact.search(line):
-                    contact = True
                 if not rx_rr.search(line):
                     data.append(line)
-            if contact == False and context.has_key(callid):
-                sock,addr,port,rr = context[callid]
-                cont = "Contact: <sip:%s:%s>" % (addr,port)
-                data.insert(1,cont)
+            # if contact == False and context.has_key(callid):
+                # sock,addr,port,rr = context[callid]
+                # cont = "Contact: <sip:%s:%s>" % (addr,port)
+                # data.insert(1,cont)
             received =  string.join(data,"\r\n")
             print "---\n>> server send:\n%s\n---" % received
             self.ssock.sendto(received,self.client_address)            
@@ -80,15 +81,6 @@ class RecvClient(threading.Thread):
 
 
 class UDPHandler(SocketServer.BaseRequestHandler):   
-    """    
-    def __init__(self,request,client_address,unknown):
-        SocketServer.BaseRequestHandler.__init__(self,request,client_address,unknown)
-        self.socket = 0
-        self.data = None
-        self.data = []
-        self.sock = None
-        print "Init"
-    """
     
     def debugRegister(self):
         print "\n--- REGISTRAR ---"
@@ -128,7 +120,6 @@ class UDPHandler(SocketServer.BaseRequestHandler):
         #print text
         self.socket.sendto(text,self.client_address)
         print "---\n<< server send:\n%s\n---" % text
-        #self.socket.close()
         
     def processRegister(self):
         fromm = ""
@@ -155,7 +146,7 @@ class UDPHandler(SocketServer.BaseRequestHandler):
         
         self.debugRegister()
         
-        if rx_invalid.search(contact):
+        if rx_invalid.search(contact) or rx_invalid2.search(contact):
             self.sendResponse("488 Not Acceptable Here")
         else:
             self.sendResponse("200 0K")
@@ -238,29 +229,31 @@ class UDPHandler(SocketServer.BaseRequestHandler):
             self.sendResponse("404 Not Found")                    
     
     def processRequest(self):
-          #print "processRequest"
-          if len(self.data) > 0:
-               request_uri = self.data[0]
-               if rx_register.search(request_uri):
-                    self.processRegister()
-               elif rx_invite.search(request_uri):
-                    self.processInvite()
-               elif rx_ack.search(request_uri):
-                    self.processAck()
-               elif rx_bye.search(request_uri):
-                    self.processInvite()
-               elif rx_cancel.search(request_uri):
-                    self.processOtherRequest()
-               elif rx_code.search(request_uri):
-                    print "unexpected code: %s" % request_uri
-               else:
-                    print "request_uri %s"     % request_uri          
-                    #print "message %s unknown" % self.data
+        #print "processRequest"
+        if len(self.data) > 0:
+            request_uri = self.data[0]
+            if rx_register.search(request_uri):
+                self.processRegister()
+            elif rx_invite.search(request_uri):
+                self.processInvite()
+            elif rx_ack.search(request_uri):
+                self.processAck()
+            # elif rx_bye.search(request_uri):
+                # self.processInvite()
+            elif rx_cancel.search(request_uri):
+                self.processOtherRequest()
+            # elif rx_code.search(request_uri):
+                # print "unexpected code: %s" % request_uri
+            else:
+                print "request_uri %s"     % request_uri          
+                #print "message %s unknown" % self.data
 
+    """
     def setup(self):
         pass
         #print "setup"
-
+    """
+    
     def handle(self):
         #print "handle"
         #print self.server
@@ -272,15 +265,13 @@ class UDPHandler(SocketServer.BaseRequestHandler):
         if len(self.data) > 1:
             print "---\n>> server received:\n%s\n---" %  self.request[0]
             self.processRequest()
-        #print "{} wrote:".format(self.client_address[0])
-        #print data
-        #socket.sendto(data.upper(), self.client_address)
 
+    """
     def finish(self):
         pass
         #print "finish"
         #self.socket.close()
-
+    """
 if __name__ == "__main__":
     #HOST, PORT = "127.0.0.1", 5060
     HOST, PORT = '0.0.0.0', 5060
