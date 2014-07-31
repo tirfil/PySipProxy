@@ -23,7 +23,9 @@ rx_invalid = re.compile("^192\.168")
 rx_invalid2 = re.compile("^10\.")
 #rx_cseq = re.compile("^CSeq:")
 rx_callid = re.compile("Call-ID: (.*)$")
-rx_rr = re.compile("^Record-Route:")
+#rx_rr = re.compile("^Record-Route:")
+# Linphone bug
+rx_rr = re.compile("^Record-.oute:")
 rx_request_uri = re.compile("^([^ ]*) sip:([^ ]*) SIP/2.0")
 
 # global dictionnary
