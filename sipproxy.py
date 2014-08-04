@@ -56,8 +56,15 @@ class RecvClient(threading.Thread):
                     code = md.group(1)
                     if int(code) == 200:
                         disconnect = True
+                # if rx_contact.search(line):
+                    # contact = True
+                # remove Record-Route
                 if not rx_rr.search(line):
                     data.append(line)
+            # if contact == False and context.has_key(callid):
+                # sock,addr,port,rr = context[callid]
+                # cont = "Contact: <sip:%s:%s>" % (addr,port)
+                # data.insert(1,cont)
             received =  string.join(data,"\r\n")
             print "---\n>> server send:\n%s\n---" % received
             self.ssock.sendto(received,self.client_address)            
@@ -83,21 +90,7 @@ class UDPHandler(SocketServer.BaseRequestHandler):
         for key in registrar.keys():
             print "%s -> %s" % (key,registrar[key])
         print "-----------------"
-        
-    def uriToAddress(self,uri):
-        addr = ""
-        port = 0
-        addrport = registrar[uri]
-        md = rx_addrport.match(addrport)
-        if md:
-            addr = md.group(1)
-            port = int(md.group(2))
-        else:
-            addr = addrport
-            port = 5060
-        return (addr,port)
-        
-                    
+            
     def parseRequest(self):
         destination = ""
         origin = ""
@@ -174,7 +167,16 @@ class UDPHandler(SocketServer.BaseRequestHandler):
         if len(destination) > 0:
             print "destination %s" % destination
             if registrar.has_key(destination):
-                addr,port = self.uriToAddress(destination)
+                addr = ""
+                port = 0
+                addrport = registrar[destination]
+                md = rx_addrport.match(addrport)
+                if md:
+                    addr = md.group(1)
+                    port = int(md.group(2))
+                else:
+                    addr = addrport
+                    port = 5060
                 print "Send INVITE to %s:%s" %(addr,port)
                 # change request uri
                 md = rx_request_uri.search(self.data[0])
@@ -188,7 +190,6 @@ class UDPHandler(SocketServer.BaseRequestHandler):
                     self.sock = context[callid][0]
                 else:
                     self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                    print "socket timeout = %s" % socket.getdefaulttimeout()
                     context[callid]=[self.sock,addr,port,rr]
                     t = RecvClient(self.sock,self.socket,self.client_address)
                     t.daemon = True
@@ -215,18 +216,6 @@ class UDPHandler(SocketServer.BaseRequestHandler):
             print "---\n<< client send:\n%s\n---" % text
             self.sock.close()
             del context[callid]
-        else:
-            origin,destination,callid = self.parseRequest()
-            if len(destination) > 0:
-                print "destination %s" % destination
-                if registrar.has_key(destination):
-                    addr,port = self.uriToAddress(destination)
-                    self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                    print "socket timeout = %s" % socket.getdefaulttimeout()
-                    text = string.join(self.data,"\r\n")
-                    self.sock.sendto(text , (addr, port))
-                    print "---\n<< client send:\n%s\n---" % text
-                    self.sock.close()
            
     def processOtherRequest(self):
         origin,destination,callid = self.parseRequest()
@@ -270,10 +259,10 @@ class UDPHandler(SocketServer.BaseRequestHandler):
     def handle(self):
         #print "handle"
         #print self.server
-        socket.setdefaulttimeout(32)
         self.data = self.request[0].split("\r\n")
         self.socket = self.request[1]
         print self.socket
+        self.timeout = 32
         print "---\n>> server received:\n%s\n---" %  self.request[0]
         if len(self.data) > 1:
             print "---\n>> server received:\n%s\n---" %  self.request[0]
