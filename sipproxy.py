@@ -11,6 +11,10 @@ rx_cancel = re.compile("^CANCEL")
 #rx_cancel_cseq = re.compile("CANCEL")
 rx_bye = re.compile("^BYE")
 #rx_bye_cseq = re.compile("BYE")
+rx_options = re.compile("^OPTIONS")
+rx_subscribe = re.compile("^SUBSCRIBE")
+rx_publish = re.compile("^PUBLISH")
+rx_notify = re.compile("^NOTIFY")
 rx_from = re.compile("^From:")
 rx_to = re.compile("^To:")
 rx_tag = re.compile(";tag")
@@ -59,7 +63,7 @@ class UpStream(threading.Thread):
                 md = rx_code.search(line)
                 if md:
                     code = md.group(1)
-                    if int(code) == 200:
+                    if int(code) >= 200:
                         disconnect = True
                 #if not rx_rr.search(line):
                 data.append(line)
@@ -261,10 +265,10 @@ class UDPHandler(SocketServer.BaseRequestHandler):
         else:
             self.sendResponse("404 Not Found")  
             
-    def processBye(self):
-        print "-------------------------------------------"
-        print " BYE received; Not Compliant with RFC 3261 "
-        print "-------------------------------------------"
+    def processTransaction(self):
+        print "---------------------------------------------------"
+        print " Transaction received; Not Compliant with RFC 3261 "
+        print "---------------------------------------------------"
         origin,destination,callid = self.parseRequest()
         if len(origin) > 0:
             print "origin %s" % origin
@@ -275,7 +279,7 @@ class UDPHandler(SocketServer.BaseRequestHandler):
             print "destination %s" % destination
             if registrar.has_key(destination):
                 addr,port = self.uriToAddress(destination)
-                print "Send BYE to %s:%s" %(addr,port)
+                print "Send Transaction to %s:%s" %(addr,port)
                 # change request uri
                 md = rx_request_uri.search(self.data[0])
                 if md:
@@ -314,11 +318,18 @@ class UDPHandler(SocketServer.BaseRequestHandler):
                 self.processInvite()
             elif rx_ack.search(request_uri):
                 self.processAck()
-
             elif rx_bye.search(request_uri):
-                self.processBye()
+                self.processTransaction()
             elif rx_cancel.search(request_uri):
                 self.processCancel()
+            elif rx_options.search(request_uri):
+                self.processTransaction()
+            elif rx_subscribe.search(request_uri):
+                self.sendResponse("200 0K")
+            elif rx_publish.search(request_uri):
+                self.sendResponse("200 0K")
+            elif rx_notify.search(request_uri):
+                self.sendResponse("200 0K")
             # elif rx_code.search(request_uri):
                 # print "unexpected code: %s" % request_uri
             else:
