@@ -32,6 +32,7 @@ rx_callid = re.compile("Call-ID: (.*)$")
 #rx_rr = re.compile("^Record-.oute:")
 rx_request_uri = re.compile("^([^ ]*) sip:([^ ]*) SIP/2.0")
 rx_route = re.compile("^Route:")
+rx_contentlength = re.compile("^Content-Length:")
 
 # global dictionnary
 registrar = {}
@@ -133,13 +134,19 @@ class UDPHandler(SocketServer.BaseRequestHandler):
         request_uri = "SIP/2.0 " + code
         self.data[0]= request_uri
         index = 0
+        data = []
         for line in self.data:
+            data.append(line)
             if rx_to.search(line):
                 if not rx_tag.search(line):
-                        self.data[index] = "%s%s" % (line,";tag=123456")
+                    self.data[index] = "%s%s" % (line,";tag=123456")
+            if rx_contentlength.search(line):
+                self.data[index]="Content-Length: 0"
             index += 1
-        text = string.join(self.data,"\r\n")
-        #print text
+            if line == "":
+                break
+        data.append("")
+        text = string.join(data,"\r\n")
         self.socket.sendto(text,self.client_address)
         print "---\n<< server send:\n%s\n---" % text
         
