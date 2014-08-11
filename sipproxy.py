@@ -15,6 +15,9 @@ rx_options = re.compile("^OPTIONS")
 rx_subscribe = re.compile("^SUBSCRIBE")
 rx_publish = re.compile("^PUBLISH")
 rx_notify = re.compile("^NOTIFY")
+rx_info = re.compile("^INFO")
+rx_message = re.compile("^MESSAGE")
+rx_refer = re.compile("^REFER")
 rx_from = re.compile("^From:")
 rx_to = re.compile("^To:")
 rx_tag = re.compile(";tag")
@@ -330,6 +333,12 @@ class UDPHandler(SocketServer.BaseRequestHandler):
             elif rx_cancel.search(request_uri):
                 self.processCancel()
             elif rx_options.search(request_uri):
+                self.processTransaction()
+            elif rx_info.search(request_uri):
+                self.processTransaction()
+            elif rx_message.search(request_uri):
+                self.processTransaction()
+            elif rx_refer.search(request_uri):
                 self.processTransaction()
             elif rx_subscribe.search(request_uri):
                 self.sendResponse("200 0K")
